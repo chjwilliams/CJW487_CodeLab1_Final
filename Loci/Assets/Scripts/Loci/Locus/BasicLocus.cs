@@ -109,6 +109,30 @@ namespace Locus
 
 		public virtual void Wander(Vector3 currentPosition, float angle)
 		{
+			// Fix this!
+
+			/*
+					if(!changePos && canmove){
+			if (recentlyMet) {
+				changePosTime = 0f;
+			} else {
+				changePosTime = Random.Range (3f, 8f);
+			}
+			Invoke("ChangePosition", changePosTime);
+			recentlyMet = false;
+			changePos = true;
+		}
+
+		void ChangePosition(){
+		if (agent.enabled) {
+			targetPoint = gm.catdestinations [Random.Range (0, gm.catdestinations.Count)].position;
+			agent.SetDestination (targetPoint);
+		}
+
+		changePos = false;
+	}
+			
+			 */
 			Vector3 predictedPoint = new Vector3(transform.position.x, transform.position.y, transform.position.z) + m_Rigidbody.velocity * Time.deltaTime;
 			Vector2 newTargetPosition = ExtensionMethods.GetPointOnCircle(visibilityRange,angle, predictedPoint);
 			newTargetPosition = Vector3.ClampMagnitude(newTargetPosition, maxForce);
