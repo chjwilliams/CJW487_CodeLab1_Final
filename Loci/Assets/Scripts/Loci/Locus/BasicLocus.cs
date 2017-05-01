@@ -54,16 +54,14 @@ namespace Locus
 		// Use this for initialization
 		protected virtual void Start () 
 		{
-			maxSpeed = Random.Range(5.0f, 15.0f);
-			maxForce = Random.Range(1.0f, 4.0f);
+			maxSpeed = Random.Range(7.0f, 15.0f);
+			maxForce = Random.Range(5.0f, 8.0f);
 			visibilityRange = Random.Range(1.0f, 4.0f);
 			m_Rigidbody = GetComponent<Rigidbody>();
-			wanderSpeed  = maxSpeed * 0.1f;
+			wanderSpeed  = maxSpeed * 0.5f;
 			myManager = Services.LociManager;
 			neighborDistance = Random.Range(1.0f, 3.0f);
 			rotationSpeed = Random.Range(1.0f, 4.0f);
-			groupSize = 0;
-			//visibilityRange = 0.5f;
 		}
 
 		public void OnCreated()
@@ -90,7 +88,9 @@ namespace Locus
 
 		protected void Move(Vector3 direction)
 		{
-			m_Rigidbody.AddForce(direction, ForceMode.Impulse);
+			Debug.Log(direction);
+			Vector3 movement = new Vector3(direction.x, 0, direction.z);
+			m_Rigidbody.AddForce(movement, ForceMode.Impulse);
 		}
 
 		public virtual void Seek(Vector3 targetPosition)
@@ -126,7 +126,7 @@ namespace Locus
 		public virtual void Wander(Vector3 currentPosition, float angle)
 		{
 			
-			if(Random.Range(0, 10000) < 50)
+			if(Random.Range(0, 10000) < 100)
 			{
 				newTargetPosition = new Vector2(Random.Range(-zoneSize, zoneSize), Random.Range(-zoneSize, zoneSize));
 				Vector3 predictedPoint = new Vector3(transform.position.x, transform.position.y, transform.position.z) + m_Rigidbody.velocity * Time.deltaTime;
