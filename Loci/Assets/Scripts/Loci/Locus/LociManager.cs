@@ -10,7 +10,8 @@ namespace LocusIManager
 	public class LociManager : Manager<BasicLocus>
 	{
 		public GameObject[] spawnPoints;
-		//private readonly System.Random _rng = new System.Random();
+		public List<BasicLocus> managedObjects = ManagedObjects;
+		private readonly System.Random _rng = new System.Random();
 
 		public void PopulateSpawnPoints()
         {
@@ -24,6 +25,18 @@ namespace LocusIManager
             ManagedObjects.Add(locus);
             locus.OnCreated();
             return locus;
+        }
+
+		public List<BasicLocus> Create(uint n)
+        {
+            List<BasicLocus> loci = null;
+
+            loci = new List<BasicLocus>();
+            for (var i = 0; i < n; i++)
+            {
+                loci.Add(Create());
+            }
+            return loci;
         }
 
 		public override void Destroy(BasicLocus locus)
@@ -44,7 +57,7 @@ namespace LocusIManager
 		public BasicLocus Init(LocusType locusType)
 		{
             BasicLocus locus = null;
-			GameObject newLocus = MonoBehaviour.Instantiate(Services.PrefabDB.Locus[0], spawnPoints[0].transform.position, Quaternion.identity) as GameObject;
+			GameObject newLocus = MonoBehaviour.Instantiate(Services.PrefabDB.Locus[0], spawnPoints[_rng.Next(0, spawnPoints.Length)].transform.position, Quaternion.identity) as GameObject;
             
 			locus = new BasicLocus();
 			switch (locusType.ToString())
