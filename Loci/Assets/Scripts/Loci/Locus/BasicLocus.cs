@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using ChrsUtils;
 using ChrsUtils.ChrsExtensionMethods;
 using ChrsUtils.ChrsManagerSystem.SimpleManager;
 using ChrsUtils.BehaviorTree;
@@ -31,20 +32,29 @@ namespace Locus
 		public float fleeTimer;
 		public float safetyDistance;
 		public float pounceDistance;
+		
 		public float neighborDistance;
 		public float rotationSpeed;
+		public float dimIntensity = 2.0f;
+		public float brightIntensity = 4.0f;
 		public int groupSize;
-		public AudioClip clip;
+		public int idealGroupSize;
+		public AudioClip[] clips = new AudioClip[2];
 		public Transform target;
 		public Transform dangerousEntity;
-		public Color defaultColor;
-		public Color secondaryColor;
-		public Color tertiaryColor;
+		public Color[] colorPalette = new Color[3];
+		public Light spotLight;
+		public EasingProperties easing;
 
 		protected Vector3 newTargetPosition = Vector3.zero;
 		protected Vector3 velocity;
 		protected Vector3 acceleration;
 		protected AudioSource m_AudioSource;
+		protected const string AUDIO_FILE_PATH = "Audio/";
+		protected const string BELL_DRUM = "BellDrum";
+		protected const string ARPEG_1 = "arpeg1";
+		protected const string ARPEG_2 = "arpeg2";
+		protected AudioSource _audioSource;
 		protected Rigidbody m_Rigidbody;
 		protected Tree<BasicLocus> m_Tree;
 		protected LociManager myManager;
@@ -54,6 +64,13 @@ namespace Locus
 		// Use this for initialization
 		protected virtual void Start () 
 		{
+			spotLight = GetComponentInChildren<Light>();
+			easing = ScriptableObject.CreateInstance("EasingProperties") as EasingProperties;
+			_audioSource = GetComponent<AudioSource>();
+			clips[0] = Resources.Load(AUDIO_FILE_PATH + ARPEG_1) as AudioClip;
+			clips[1] = Resources.Load(AUDIO_FILE_PATH + ARPEG_2) as AudioClip;
+
+			spotLight.intensity = dimIntensity;
 			maxSpeed = Random.Range(7.0f, 15.0f);
 			maxForce = Random.Range(5.0f, 8.0f);
 			visibilityRange = Random.Range(1.0f, 4.0f);
@@ -62,6 +79,18 @@ namespace Locus
 			myManager = Services.LociManager;
 			neighborDistance = Random.Range(1.0f, 3.0f);
 			rotationSpeed = Random.Range(1.0f, 4.0f);
+
+
+			idealGroupSize = Random.Range(0, 20);
+
+			colorPalette[0] = new Color(0.337f, 0.467f, 0.78f);
+			colorPalette[1] = new Color(0.251f, 0.498f, 0.498f);
+			colorPalette[2] = new Color(0.667f, 0.224f, 0.224f);
+
+			int color = Random.Range(0, 10) % 3;
+
+			spotLight.color = colorPalette[color];
+			GetComponent<Renderer>().material.color = colorPalette[color];
 		}
 
 		public void OnCreated()
@@ -76,19 +105,81 @@ namespace Locus
 
 		public bool DangerCheck()
 		{
-			if (Vector3.Distance(dangerousEntity.position, transform.position) < visibilityRange)
+			return Vector3.Distance(dangerousEntity.position, transform.position) < visibilityRange? true : false;
+		}
+
+		public bool FeelingConfident()
+		{
+			return idealGroupSize < groupSize? true: false;
+		}
+
+		IEnumerator FadeInLight()
+		{
+			yield return StartCoroutine(Coroutines.DoOverEasedTime(1.0f, easing.FadeInEasing, t =>
+        	{
+				float intensity = Mathf.Lerp(dimIntensity, brightIntensity, t * 5.0f);
+				spotLight.intensity = intensity;
+				StartCoroutine(FadeOutLight());
+			}));	
+		}
+
+		IEnumerator FadeOutLight()
+		{
+			yield return StartCoroutine(Coroutines.DoOverEasedTime(1.0f, easing.FadeOutEasing, t =>
+        	{
+				float intensity = Mathf.Lerp(brightIntensity, dimIntensity, t * 5.0f);
+				spotLight.intensity = intensity;
+			}));	
+		}
+
+		IEnumerator FadeOutAudio()
+		{
+			yield return StartCoroutine(Coroutines.DoOverEasedTime(1.0f, easing.FadeOutEasing, t =>
+        	{
+				float volume = Mathf.Lerp(0.2f, 0, t * 0.01f);
+				_audioSource.volume = volume;
+			}));
+		}
+
+		IEnumerator FadeInAudio()
+		{
+			yield return StartCoroutine(Coroutines.DoOverEasedTime(1.0f, easing.FadeInEasing, t =>
+        	{
+				float volume = Mathf.Lerp(0, 0.3f, t * 0.01f);
+				_audioSource.volume = volume;
+			}));
+		}
+
+		public void RandomizeTarget()
+		{
+			while(target == null || target == dangerousEntity)
 			{
-				return true;
+				if(Random.Range(0, 10) < 1)
+				{
+					target = myManager.managedObjects[Random.Range(0, myManager.managedObjects.Count)].transform;
+				}
+				else
+				{
+					target = GameObject.FindGameObjectWithTag("Player").transform;
+				}
 			}
-			else
+		}
+
+		protected virtual void OnCollisionEnter(Collision col)
+		{
+			if (col.gameObject.tag == "Loci" || col.gameObject.tag == "Wall" )
 			{
-				return false;
+				if(!_audioSource.isPlaying)
+				{
+					_audioSource.pitch = Mathf.PerlinNoise(0, 5);
+					_audioSource.PlayOneShot(clips[Random.Range(0, 10) % 2], Random.Range(0.1f, 0.15f));
+				}
+				StartCoroutine(FadeInLight());
 			}
 		}
 
 		protected void Move(Vector3 direction)
 		{
-			Debug.Log(direction);
 			Vector3 movement = new Vector3(direction.x, 0, direction.z);
 			m_Rigidbody.AddForce(movement, ForceMode.Impulse);
 		}
@@ -125,7 +216,6 @@ namespace Locus
 
 		public virtual void Wander(Vector3 currentPosition, float angle)
 		{
-			
 			if(Random.Range(0, 10000) < 100)
 			{
 				newTargetPosition = new Vector2(Random.Range(-zoneSize, zoneSize), Random.Range(-zoneSize, zoneSize));
@@ -213,11 +303,6 @@ namespace Locus
 			{
 				isFlocking = false;
 			}
-		}
-
-		protected virtual void OnCollisionEnter(Collision cols)
-		{
-
 		}
 
 		protected virtual void FixedUpdate () 

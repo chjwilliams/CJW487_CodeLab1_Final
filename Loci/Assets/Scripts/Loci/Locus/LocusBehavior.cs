@@ -23,6 +23,14 @@ namespace LocusNodes
 		}
 	}
 
+	public class FeelingConfident : Node<BasicLocus>
+	{
+		public override bool Update(BasicLocus locus)
+		{
+			return locus.FeelingConfident();
+		}
+	}
+
 	public class FleeDanger : Node<BasicLocus>
 	{
 		public override bool Update(BasicLocus locus)
